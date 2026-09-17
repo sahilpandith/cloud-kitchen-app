@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { emptyAppData } from "../types";
+import { emptyAppData, type AppData, type Expense } from "../types";
 import { GithubConflictError, type GithubConfig } from "../lib/github";
 
 const fetchAppData = vi.fn();
@@ -17,6 +17,12 @@ vi.mock("../lib/github", async () => {
 const { useDataStore } = await import("./useDataStore");
 
 const config: GithubConfig = { token: "t", owner: "me", repo: "cloud-kitchen-data", path: "data.json" };
+
+// A genuinely non-idempotent mutator (array append) — applying it twice to
+// the same base produces two entries, which is exactly the duplication bug
+// these regression tests guard against.
+const testExpense: Expense = { id: "e1", date: "2026-01-01", category: "Other", amount: 10, note: "test" };
+const appendExpense = (data: AppData): AppData => ({ ...data, expenses: [...data.expenses, testExpense] });
 
 beforeEach(() => {
   localStorage.clear();
@@ -108,5 +114,66 @@ describe("useDataStore", () => {
 
     expect(useDataStore.getState().status).toBe("saved");
     expect(useDataStore.getState().sha).toBe("sha4");
+  });
+
+  it("retries once on a conflict with a non-idempotent mutator without duplicating", async () => {
+    useDataStore.getState().setConfig(config);
+    useDataStore.setState({ sha: "sha1" });
+    saveAppData.mockRejectedValueOnce(new GithubConflictError());
+    saveAppData.mockResolvedValueOnce({ sha: "sha3" });
+    fetchAppData.mockResolvedValue({ data: emptyAppData(), sha: "sha2" });
+
+    await useDataStore.getState().mutate(appendExpense, "add expense");
+
+    expect(useDataStore.getState().data.expenses).toEqual([testExpense]);
+    expect(useDataStore.getState().sha).toBe("sha3");
+    expect(useDataStore.getState().status).toBe("saved");
+  });
+
+  it("retry() after a non-conflict failure does not re-apply the mutator to already-mutated local data", async () => {
+    useDataStore.getState().setConfig(config);
+    useDataStore.setState({ sha: "sha1" });
+    // First attempt: optimistic apply happens locally, then the save fails
+    // with a plain (non-conflict) error.
+    saveAppData.mockRejectedValueOnce(new Error("network error"));
+
+    await useDataStore.getState().mutate(appendExpense, "add expense");
+
+    expect(useDataStore.getState().status).toBe("error");
+    // Optimistic local apply happened once — exactly one item, not zero.
+    expect(useDataStore.getState().data.expenses).toEqual([testExpense]);
+
+    // Retry should fetch the fresh remote state (which doesn't have the
+    // expense yet) and apply the mutator to THAT, not to the already-mutated
+    // local `data`, otherwise the expense would be duplicated.
+    saveAppData.mockReset();
+    saveAppData.mockResolvedValue({ sha: "sha5" });
+    fetchAppData.mockReset();
+    fetchAppData.mockResolvedValue({ data: emptyAppData(), sha: "sha2" });
+
+    await useDataStore.getState().retry();
+
+    expect(useDataStore.getState().status).toBe("saved");
+    expect(useDataStore.getState().sha).toBe("sha5");
+    expect(useDataStore.getState().data.expenses).toEqual([testExpense]);
+  });
+
+  it("retry() falls back to loadData() when there is no pendingSave (failed initial connection)", async () => {
+    useDataStore.getState().setConfig(config);
+    fetchAppData.mockRejectedValueOnce(new Error("bad credentials"));
+
+    await useDataStore.getState().loadData();
+
+    expect(useDataStore.getState().status).toBe("error");
+    expect(useDataStore.getState().pendingSave).toBeNull();
+
+    fetchAppData.mockReset();
+    fetchAppData.mockResolvedValue({ data: emptyAppData(), sha: "sha9" });
+
+    await useDataStore.getState().retry();
+
+    expect(fetchAppData).toHaveBeenCalledTimes(1);
+    expect(useDataStore.getState().status).toBe("saved");
+    expect(useDataStore.getState().sha).toBe("sha9");
   });
 });
