@@ -10,7 +10,10 @@ export default function InventoryStockList() {
         {inventory.map((item) => {
           const low = item.currentQty <= item.lowStockThreshold;
           return (
-            <li key={item.id} className="flex items-center justify-between py-2 text-sm">
+            <li
+              key={item.id}
+              className="flex flex-col gap-1 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
+            >
               <span>
                 {item.name} — {item.currentQty} {item.unit}
               </span>
