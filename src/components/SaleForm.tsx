@@ -4,6 +4,7 @@ import { AppData, Sale, SaleChannel, SaleLineItem } from "../types";
 import { formatCurrency } from "../lib/currency";
 
 interface DraftLine {
+  id: string;
   menuItemId: string;
   qty: string;
   price: string;
@@ -14,13 +15,14 @@ function generateId(): string {
 }
 
 function emptyLine(): DraftLine {
-  return { menuItemId: "", qty: "1", price: "" };
+  return { id: generateId(), menuItemId: "", qty: "1", price: "" };
 }
 
 export default function SaleForm() {
   const menuItems = useDataStore((s) => s.data.menuItems);
   const defaultCommissionPct = useDataStore((s) => s.data.settings.defaultZomatoCommissionPct);
   const mutate = useDataStore((s) => s.mutate);
+  const status = useDataStore((s) => s.status);
 
   const [channel, setChannel] = useState<SaleChannel>("direct");
   const [lines, setLines] = useState<DraftLine[]>([emptyLine()]);
@@ -67,6 +69,14 @@ export default function SaleForm() {
       }
       parsedLines.push({ menuItemId: l.menuItemId, qty, price });
     }
+    const commissionInvalid =
+      channel === "zomato" &&
+      ((commissionTouched && !commission.trim()) ||
+        !(Number.isFinite(effectiveCommission) && effectiveCommission >= 0));
+    if (commissionInvalid) {
+      setError("Enter a valid Zomato commission amount.");
+      return;
+    }
     setError(null);
 
     const sale: Sale = {
@@ -96,7 +106,11 @@ export default function SaleForm() {
         Channel
         <select
           value={channel}
-          onChange={(e) => setChannel(e.target.value as SaleChannel)}
+          onChange={(e) => {
+            setChannel(e.target.value as SaleChannel);
+            setCommission("");
+            setCommissionTouched(false);
+          }}
           className="mt-1 rounded border border-gray-300 p-2"
         >
           <option value="direct">Direct</option>
@@ -105,7 +119,7 @@ export default function SaleForm() {
       </label>
 
       {lines.map((line, index) => (
-        <div key={index} className="flex flex-col gap-2 border-b border-gray-100 pb-2 sm:flex-row sm:flex-wrap sm:items-end sm:border-b-0 sm:pb-0">
+        <div key={line.id} className="flex flex-col gap-2 border-b border-gray-100 pb-2 sm:flex-row sm:flex-wrap sm:items-end sm:border-b-0 sm:pb-0">
           <label className="flex flex-col text-sm">
             Item
             <select
@@ -169,7 +183,11 @@ export default function SaleForm() {
         </label>
       )}
 
-      <button type="submit" className="self-start rounded bg-orange-600 px-4 py-2 text-white">
+      <button
+        type="submit"
+        disabled={status === "saving"}
+        className="self-start rounded bg-orange-600 px-4 py-2 text-white disabled:opacity-50"
+      >
         Log Sale
       </button>
     </form>

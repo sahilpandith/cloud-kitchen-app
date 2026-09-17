@@ -85,6 +85,20 @@ describe("SaleForm", () => {
     expect(useDataStore.getState().data.sales[0].zomatoCommission).toBe(40);
   });
 
+  it("shows a validation error and does not submit when the Zomato commission is cleared", async () => {
+    render(<SaleForm />);
+
+    fireEvent.change(screen.getByLabelText("Channel"), { target: { value: "zomato" } });
+    fireEvent.change(screen.getByLabelText("Item"), { target: { value: "m1" } });
+    fireEvent.change(screen.getByLabelText("Qty"), { target: { value: "1" } });
+
+    fireEvent.change(screen.getByLabelText("Zomato Commission"), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Log Sale" }));
+
+    expect(await screen.findByText(/Enter a valid Zomato commission amount/)).toBeInTheDocument();
+    expect(useDataStore.getState().data.sales).toEqual([]);
+  });
+
   it("supports adding and removing line items", () => {
     render(<SaleForm />);
     expect(screen.getAllByLabelText("Item")).toHaveLength(1);
