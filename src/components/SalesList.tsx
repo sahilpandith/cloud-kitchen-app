@@ -14,7 +14,6 @@ export default function SalesList() {
     () =>
       sales
         .filter((sale) => isWithinRange(sale.date, range))
-        .slice()
         .sort((a, b) => b.date.localeCompare(a.date)),
     [sales, range]
   );

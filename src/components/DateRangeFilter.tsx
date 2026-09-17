@@ -51,24 +51,24 @@ export default function DateRangeFilter({ onChange }: Props) {
       ))}
       {mode === "custom" && (
         <span className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-1">
+          <label className="flex flex-col text-sm sm:flex-row sm:items-center sm:gap-1">
             Start date
             <input
               type="date"
               aria-label="Start date"
               value={customStart}
               onChange={(e) => applyCustom(e.target.value, customEnd)}
-              className="rounded border border-gray-300 p-1"
+              className="w-full rounded border border-gray-300 p-1 sm:w-auto"
             />
           </label>
-          <label className="flex items-center gap-1">
+          <label className="flex flex-col text-sm sm:flex-row sm:items-center sm:gap-1">
             End date
             <input
               type="date"
               aria-label="End date"
               value={customEnd}
               onChange={(e) => applyCustom(customStart, e.target.value)}
-              className="rounded border border-gray-300 p-1"
+              className="w-full rounded border border-gray-300 p-1 sm:w-auto"
             />
           </label>
         </span>
