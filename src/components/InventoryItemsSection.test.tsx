@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import InventoryItemsSection from "./InventoryItemsSection";
 import { useDataStore } from "../store/useDataStore";
 import { emptyAppData } from "../types";
+import { utf8ToBase64 } from "../lib/base64";
 
 const config = { token: "t", owner: "me", repo: "cloud-kitchen-data", path: "data.json" };
 
@@ -81,6 +82,57 @@ describe("InventoryItemsSection", () => {
         { id: "i1", name: "New Name", unit: "kg", currentQty: 12, lowStockThreshold: 3 },
       ])
     );
+  });
+
+  it("preserves a fresh remote currentQty on a conflict retry instead of clobbering it with the stale value captured at submit time", async () => {
+    useDataStore.setState({
+      data: {
+        ...emptyAppData(),
+        inventory: [{ id: "i1", name: "Paneer", unit: "kg", currentQty: 12, lowStockThreshold: 3 }],
+      },
+    });
+
+    // Simulates another device having logged a stock-in (12kg -> 20kg) on
+    // the remote data between when this client last loaded and when its
+    // edit-save is retried after a conflict.
+    const freshRemoteData = {
+      ...emptyAppData(),
+      inventory: [{ id: "i1", name: "Paneer", unit: "kg", currentQty: 20, lowStockThreshold: 3 }],
+    };
+
+    const fetchMock = vi
+      .fn()
+      // 1: the initial PUT save from mutate() — conflicts.
+      .mockResolvedValueOnce({ status: 409, ok: false })
+      // 2: the GET refetch from fetchApplySave() — returns fresh remote data.
+      .mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        json: async () => ({
+          sha: "fresh-sha",
+          content: utf8ToBase64(JSON.stringify(freshRemoteData)),
+        }),
+      })
+      // 3: the retried PUT save from fetchApplySave() — succeeds.
+      .mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        json: async () => ({ content: { sha: "final-sha" } }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<InventoryItemsSection />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Paneer (grated)" } });
+    fireEvent.click(screen.getByRole("button", { name: "Update Item" }));
+
+    await waitFor(() => expect(useDataStore.getState().status).toBe("saved"));
+
+    expect(useDataStore.getState().data.inventory).toEqual([
+      { id: "i1", name: "Paneer (grated)", unit: "kg", currentQty: 20, lowStockThreshold: 3 },
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("blocks deleting an inventory item referenced by a stock move", async () => {

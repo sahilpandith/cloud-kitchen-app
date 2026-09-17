@@ -49,20 +49,16 @@ export default function InventoryItemsSection() {
     setError(null);
 
     if (editingId) {
-      const current = inventory.find((i) => i.id === editingId);
-      const updated: InventoryItem = {
-        id: editingId,
-        name: name.trim(),
-        unit: unit.trim(),
-        currentQty: current ? current.currentQty : 0,
-        lowStockThreshold: threshold,
-      };
       await mutate(
         (data: AppData) => ({
           ...data,
-          inventory: data.inventory.map((i) => (i.id === editingId ? updated : i)),
+          inventory: data.inventory.map((i) =>
+            i.id === editingId
+              ? { ...i, name: name.trim(), unit: unit.trim(), lowStockThreshold: threshold }
+              : i
+          ),
         }),
-        `Update inventory item: ${updated.name}`
+        `Update inventory item: ${name.trim()}`
       );
     } else {
       const newItem: InventoryItem = {
