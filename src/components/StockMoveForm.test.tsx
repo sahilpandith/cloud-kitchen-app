@@ -73,7 +73,12 @@ describe("StockMoveForm", () => {
   });
 
   it("logs a linked Ingredients expense alongside a stock-in move", async () => {
-    stubSuccessfulSave();
+    const fetchMock = vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => ({ content: { sha: "new-sha" } }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
     render(<StockMoveForm />);
 
     fireEvent.change(screen.getByLabelText("Item"), { target: { value: "i1" } });
@@ -86,6 +91,9 @@ describe("StockMoveForm", () => {
     expect(useDataStore.getState().data.expenses).toEqual([
       expect.objectContaining({ category: "Ingredients", amount: 500 }),
     ]);
+    // The stock move and its linked expense must be written via a single
+    // optimistic mutate/save, never two separate saves.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("does not show the expense checkbox for stock-out moves", () => {
