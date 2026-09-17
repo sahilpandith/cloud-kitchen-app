@@ -11,6 +11,7 @@ export default function MenuItemsSection() {
   const menuItems = useDataStore((s) => s.data.menuItems);
   const sales = useDataStore((s) => s.data.sales);
   const mutate = useDataStore((s) => s.mutate);
+  const status = useDataStore((s) => s.status);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -36,7 +37,13 @@ export default function MenuItemsSection() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const price = Number(defaultPrice);
-    if (!name.trim() || !category.trim() || !Number.isFinite(price) || price < 0) {
+    if (
+      !name.trim() ||
+      !category.trim() ||
+      !defaultPrice.trim() ||
+      !Number.isFinite(price) ||
+      price < 0
+    ) {
       setError("Enter a name, category, and a valid price.");
       return;
     }
@@ -134,7 +141,11 @@ export default function MenuItemsSection() {
             className="mt-1 w-full rounded border border-gray-300 p-2 sm:w-28"
           />
         </label>
-        <button type="submit" className="rounded bg-orange-600 px-4 py-2 text-white">
+        <button
+          type="submit"
+          disabled={status === "saving"}
+          className="rounded bg-orange-600 px-4 py-2 text-white disabled:opacity-50"
+        >
           {editingId ? "Update Item" : "Add Item"}
         </button>
         {editingId && (

@@ -7,8 +7,12 @@ export default function Settings() {
   const status = useDataStore((s) => s.status);
   const error = useDataStore((s) => s.error);
   const sha = useDataStore((s) => s.sha);
+  const pendingSave = useDataStore((s) => s.pendingSave);
   const setConfig = useDataStore((s) => s.setConfig);
   const loadData = useDataStore((s) => s.loadData);
+
+  const connected =
+    status === "saved" || status === "saving" || (status === "error" && pendingSave !== null);
 
   const [token, setToken] = useState(config?.token ?? "");
   const [owner, setOwner] = useState(config?.owner ?? "");
@@ -72,7 +76,7 @@ export default function Settings() {
         </p>
       )}
       {status === "error" && <p className="mt-3 text-sm text-red-700">Connection failed: {error}</p>}
-      {status === "saved" && <MenuItemsSection />}
+      {connected && <MenuItemsSection />}
     </div>
   );
 }

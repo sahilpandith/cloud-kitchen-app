@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import Settings from "./Settings";
 import { useDataStore } from "../store/useDataStore";
 import { emptyAppData } from "../types";
@@ -94,5 +94,52 @@ describe("Settings", () => {
     fillAndSubmit();
 
     expect(await screen.findByText("Menu Items")).toBeInTheDocument();
+  });
+
+  it("keeps the Menu Items section mounted while a save is in flight", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        status: 200,
+        ok: true,
+        json: async () => ({ content: utf8ToBase64(JSON.stringify(emptyAppData())), sha: "abc123" }),
+      })
+    );
+
+    render(<Settings />);
+    fillAndSubmit();
+
+    expect(await screen.findByText("Menu Items")).toBeInTheDocument();
+
+    act(() => {
+      useDataStore.setState({ status: "saving" });
+    });
+
+    expect(screen.getByText("Menu Items")).toBeInTheDocument();
+  });
+
+  it("keeps the Menu Items section mounted when a save fails while already connected", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        status: 200,
+        ok: true,
+        json: async () => ({ content: utf8ToBase64(JSON.stringify(emptyAppData())), sha: "abc123" }),
+      })
+    );
+
+    render(<Settings />);
+    fillAndSubmit();
+
+    expect(await screen.findByText("Menu Items")).toBeInTheDocument();
+
+    act(() => {
+      useDataStore.setState({
+        status: "error",
+        pendingSave: { mutator: (d) => d, message: "x" },
+      });
+    });
+
+    expect(screen.getByText("Menu Items")).toBeInTheDocument();
   });
 });

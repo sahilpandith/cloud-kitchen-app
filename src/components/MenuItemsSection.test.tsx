@@ -62,6 +62,17 @@ describe("MenuItemsSection", () => {
     expect(useDataStore.getState().data.menuItems).toEqual([]);
   });
 
+  it("shows a validation error for a blank price and does not add the item", async () => {
+    render(<MenuItemsSection />);
+
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Blank Price Item" } });
+    fireEvent.change(screen.getByLabelText("Category"), { target: { value: "Test" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add Item" }));
+
+    expect(await screen.findByText(/Enter a name, category, and a valid price/)).toBeInTheDocument();
+    expect(useDataStore.getState().data.menuItems).toEqual([]);
+  });
+
   it("edits an existing menu item", async () => {
     stubSuccessfulSave();
     useDataStore.setState({
