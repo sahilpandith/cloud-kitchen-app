@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { useDataStore } from "../store/useDataStore";
+import MenuItemsSection from "../components/MenuItemsSection";
 
 export default function Settings() {
   const config = useDataStore((s) => s.config);
@@ -71,6 +72,7 @@ export default function Settings() {
         </p>
       )}
       {status === "error" && <p className="mt-3 text-sm text-red-700">Connection failed: {error}</p>}
+      {status === "saved" && <MenuItemsSection />}
     </div>
   );
 }
