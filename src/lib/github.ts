@@ -43,7 +43,13 @@ export async function fetchAppData(config: GithubConfig): Promise<GithubFile> {
   }
 
   const body = await response.json();
-  const data = JSON.parse(base64ToUtf8(body.content)) as AppData;
+  let parsed: Partial<AppData>;
+  try {
+    parsed = JSON.parse(base64ToUtf8(body.content)) as Partial<AppData>;
+  } catch (err) {
+    throw new Error(`data.json contains invalid JSON: ${(err as Error).message}`);
+  }
+  const data: AppData = { ...emptyAppData(), ...parsed };
   return { data, sha: body.sha as string };
 }
 

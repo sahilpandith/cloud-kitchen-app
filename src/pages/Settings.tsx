@@ -5,6 +5,7 @@ export default function Settings() {
   const config = useDataStore((s) => s.config);
   const status = useDataStore((s) => s.status);
   const error = useDataStore((s) => s.error);
+  const sha = useDataStore((s) => s.sha);
   const setConfig = useDataStore((s) => s.setConfig);
   const loadData = useDataStore((s) => s.loadData);
 
@@ -57,9 +58,16 @@ export default function Settings() {
         </button>
       </form>
       {status === "loading" && <p className="mt-3 text-sm text-gray-500">Connecting…</p>}
-      {status === "saved" && config && (
+      {status === "saved" && config && sha !== null && (
         <p className="mt-3 text-sm text-green-700">
           Connected to {config.owner}/{config.repo}.
+        </p>
+      )}
+      {status === "saved" && config && sha === null && (
+        <p className="mt-3 text-sm text-yellow-700">
+          Connected to {config.owner}/{config.repo} — no data.json found yet. If you expected existing
+          data, double-check the repo name and that your token has access to it; otherwise data.json
+          will be created on your first save.
         </p>
       )}
       {status === "error" && <p className="mt-3 text-sm text-red-700">Connection failed: {error}</p>}

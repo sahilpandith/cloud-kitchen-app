@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import Settings from "./Settings";
 import { useDataStore } from "../store/useDataStore";
 import { emptyAppData } from "../types";
+import { utf8ToBase64 } from "../lib/base64";
 
 beforeEach(() => {
   localStorage.clear();
@@ -32,15 +33,16 @@ function fillAndSubmit() {
 }
 
 describe("Settings", () => {
-  it("saves config and connects on submit", async () => {
+  it("saves config and shows a distinct message when no data.json exists yet (404)", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 404, ok: false }));
 
     render(<Settings />);
     fillAndSubmit();
 
     await waitFor(() =>
-      expect(screen.getByText(/Connected to sahil\/cloud-kitchen-data/)).toBeInTheDocument()
+      expect(screen.getByText(/no data\.json found yet/i)).toBeInTheDocument()
     );
+    expect(screen.getByText(/Connected to sahil\/cloud-kitchen-data/)).toBeInTheDocument();
 
     expect(useDataStore.getState().config).toEqual({
       token: "ghp_test",
@@ -48,6 +50,25 @@ describe("Settings", () => {
       repo: "cloud-kitchen-data",
       path: "data.json",
     });
+  });
+
+  it("shows the plain connected message when data.json already exists", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        status: 200,
+        ok: true,
+        json: async () => ({ content: utf8ToBase64(JSON.stringify(emptyAppData())), sha: "abc123" }),
+      })
+    );
+
+    render(<Settings />);
+    fillAndSubmit();
+
+    await waitFor(() =>
+      expect(screen.getByText(/^Connected to sahil\/cloud-kitchen-data\.$/)).toBeInTheDocument()
+    );
+    expect(screen.queryByText(/no data\.json found yet/i)).not.toBeInTheDocument();
   });
 
   it("shows an error message when connecting fails", async () => {

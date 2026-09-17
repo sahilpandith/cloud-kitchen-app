@@ -39,6 +39,36 @@ describe("fetchAppData", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 500, ok: false }));
     await expect(fetchAppData(config)).rejects.toThrow("status 500");
   });
+
+  it("normalizes a file that's missing top-level keys by merging over emptyAppData()", async () => {
+    // Simulates a hand-authored data.json (per SETUP.md) that's missing keys.
+    const partial = { settings: { defaultZomatoCommissionPct: 18 } };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        status: 200,
+        ok: true,
+        json: async () => ({ content: utf8ToBase64(JSON.stringify(partial)), sha: "abc123" }),
+      })
+    );
+    const result = await fetchAppData(config);
+    expect(result).toEqual({
+      data: { ...emptyAppData(), settings: { defaultZomatoCommissionPct: 18 } },
+      sha: "abc123",
+    });
+  });
+
+  it("throws a readable error for malformed (non-JSON) file content", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        status: 200,
+        ok: true,
+        json: async () => ({ content: utf8ToBase64("{ not valid json"), sha: "abc123" }),
+      })
+    );
+    await expect(fetchAppData(config)).rejects.toThrow("data.json contains invalid JSON");
+  });
 });
 
 describe("saveAppData", () => {
