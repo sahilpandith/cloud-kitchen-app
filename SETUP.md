@@ -7,8 +7,8 @@ One-time setup to get Cloud Kitchen Manager hosted and connected to your own dat
 1. **`cloud-kitchen-app`** — public. This holds the app code (this project).
 2. **`cloud-kitchen-data`** — private. This holds nothing but your data; create it empty.
 
-If you name either repo differently, update `base` in `vite.config.ts`, the `icons`/`start_url` in the PWA
-manifest, and the repo name you enter in the app's Settings screen, to match.
+If you name either repo differently, update `base` in `vite.config.ts` (the PWA manifest's `start_url`/`scope`
+follow it automatically) and the repo name you enter in the app's Settings screen, to match.
 
 ## 2. Push this code to `cloud-kitchen-app`
 
