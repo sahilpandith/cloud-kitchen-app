@@ -158,6 +158,41 @@ describe("useDataStore", () => {
     expect(useDataStore.getState().data.expenses).toEqual([testExpense]);
   });
 
+  it("retry() sets status to saving (not error) and clears error while the round trip is in flight, ending saved with error null", async () => {
+    useDataStore.getState().setConfig(config);
+    useDataStore.setState({ sha: "sha1" });
+    saveAppData.mockRejectedValueOnce(new Error("network error"));
+
+    await useDataStore.getState().mutate(appendExpense, "add expense");
+
+    expect(useDataStore.getState().status).toBe("error");
+    expect(useDataStore.getState().error).not.toBeNull();
+
+    // Control when fetchAppData resolves so we can observe the state while
+    // the retry's fetch+save round trip is still in flight.
+    let resolveFetch: (value: { data: AppData; sha: string }) => void;
+    const fetchPromise = new Promise<{ data: AppData; sha: string }>((resolve) => {
+      resolveFetch = resolve;
+    });
+    fetchAppData.mockReset();
+    fetchAppData.mockReturnValue(fetchPromise);
+    saveAppData.mockReset();
+    saveAppData.mockResolvedValue({ sha: "sha6" });
+
+    const retryPromise = useDataStore.getState().retry();
+
+    // Give the retry's synchronous-to-first-await code a chance to run.
+    await Promise.resolve();
+    expect(useDataStore.getState().status).toBe("saving");
+    expect(useDataStore.getState().error).toBeNull();
+
+    resolveFetch!({ data: emptyAppData(), sha: "sha2" });
+    await retryPromise;
+
+    expect(useDataStore.getState().status).toBe("saved");
+    expect(useDataStore.getState().error).toBeNull();
+  });
+
   it("retry() falls back to loadData() when there is no pendingSave (failed initial connection)", async () => {
     useDataStore.getState().setConfig(config);
     fetchAppData.mockRejectedValueOnce(new Error("bad credentials"));

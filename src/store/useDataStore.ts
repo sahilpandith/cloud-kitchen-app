@@ -30,12 +30,6 @@ type Status = "idle" | "loading" | "saving" | "saved" | "error";
 interface PendingSave {
   mutator: (data: AppData) => AppData;
   message: string;
-  // The data the mutator was applied to on the attempt that produced this
-  // pendingSave, captured *before* mutation. Retrying must never re-apply
-  // the mutator on top of already-mutated local state (that would duplicate
-  // non-idempotent changes like array appends) — it re-fetches fresh data
-  // from GitHub and applies the mutator to that instead.
-  base: AppData;
 }
 
 interface DataStoreState {
@@ -61,6 +55,7 @@ export const useDataStore = create<DataStoreState>((set, get) => {
     mutator: (data: AppData) => AppData,
     message: string
   ): Promise<void> {
+    set({ status: "saving", error: null });
     try {
       const latest = await fetchAppData(config);
       const reapplied = mutator(latest.data);
@@ -100,7 +95,7 @@ export const useDataStore = create<DataStoreState>((set, get) => {
       const { config, data: base } = get();
       if (!config) throw new Error("No GitHub config set");
       const newData = mutator(base);
-      set({ data: newData, status: "saving", error: null, pendingSave: { mutator, message, base } });
+      set({ data: newData, status: "saving", error: null, pendingSave: { mutator, message } });
       try {
         const { sha } = await saveAppData(config, newData, get().sha, message);
         set({ sha, status: "saved", pendingSave: null });
