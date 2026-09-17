@@ -142,4 +142,20 @@ describe("Settings", () => {
 
     expect(screen.getByText("Menu Items")).toBeInTheDocument();
   });
+
+  it("renders the Inventory Items section once connected", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        status: 200,
+        ok: true,
+        json: async () => ({ content: utf8ToBase64(JSON.stringify(emptyAppData())), sha: "abc123" }),
+      })
+    );
+
+    render(<Settings />);
+    fillAndSubmit();
+
+    expect(await screen.findByText("Inventory Items")).toBeInTheDocument();
+  });
 });
