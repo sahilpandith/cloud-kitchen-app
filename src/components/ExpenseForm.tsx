@@ -14,6 +14,15 @@ function todayDateString(): string {
   return `${y}-${m}-${d}`;
 }
 
+// Builds the Date from local year/month/day components (so it represents
+// local midnight) before converting to ISO, rather than letting `new
+// Date(dateString)` parse the YYYY-MM-DD string as UTC midnight — which,
+// at negative UTC offsets, would shift the stored date back by a day.
+function localDateStringToIso(dateString: string): string {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day).toISOString();
+}
+
 const CATEGORIES: ExpenseCategory[] = ["Ingredients", "Rent", "Utilities", "Staff", "Packaging", "Other"];
 
 export default function ExpenseForm() {
@@ -37,7 +46,7 @@ export default function ExpenseForm() {
 
     const expense: Expense = {
       id: generateId(),
-      date: new Date(date).toISOString(),
+      date: localDateStringToIso(date),
       category,
       amount: parsedAmount,
       note,
