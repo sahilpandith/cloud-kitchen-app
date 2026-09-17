@@ -4,7 +4,7 @@
 
 **Goal:** Build the first real data-entry features on top of the foundation: menu item management (in Settings) and the Sales screen (log a sale with line items, view/filter sale history).
 
-**Architecture:** Two new pure-logic modules (currency formatting, date-range math), a reusable `DateRangeFilter` UI component built on the date-range module, and three feature components (`MenuItemsSection`, `SaleForm`, `SalesList`) that read/write through the foundation's existing `useDataStore.mutate()` — no new persistence code.
+**Architecture:** Two new pure-logic modules (currency formatting, date-range math), a reusable `DateRangeFilter` UI component built on the date-range module, and three feature components (`MenuItemsSection`, `SaleForm`, `SalesList`) that read/write through the foundation's existing `useDataStore.mutate()` — no new persistence code. All new layouts are mobile-first (stacked by default, row layout from `sm:` up), and the foundation's `Nav` component is fixed to wrap on narrow screens instead of scrolling with no affordance.
 
 **Tech Stack:** Same as the foundation — React 18, TypeScript 5 (strict), Zustand, Tailwind, Vitest + Testing Library. No new dependencies.
 
@@ -21,6 +21,7 @@ This is the second of four planned increments (see [the original design spec](20
 - Date-range math uses **local** calendar dates (not UTC) for "today", so filtering matches what the user visually expects as "today" in their own timezone.
 - `crypto.randomUUID()` is available and verified working in this project's Vitest + jsdom environment — use it for new entity IDs (menu items, sales), consistent with no new ID-generation dependency.
 - CSV export, Inventory, Expenses, Dashboard, P&L, and Insights are explicitly out of scope for this plan.
+- **Mobile-first layout.** This app is used on a phone. Every form row in this plan stacks vertically (`flex-col`) by default and only becomes a horizontal row at the `sm:` breakpoint (640px) and up; inputs are full-width (`w-full`) by default and only take a fixed compact width at `sm:` and up. This applies to every new component in this plan (Tasks 3–6) and to the existing `Nav` component from the foundation (Task 7), which currently cuts off tabs on a 375px-wide screen (`overflow-x-auto` with no scroll affordance) — verified directly against the deployed app.
 
 ---
 
@@ -329,7 +330,7 @@ export default function DateRangeFilter({ onChange }: Props) {
         </button>
       ))}
       {mode === "custom" && (
-        <span className="flex items-center gap-2">
+        <span className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-1">
             Start date
             <input
@@ -612,7 +613,7 @@ export default function MenuItemsSection() {
       {error && <p className="mb-2 text-sm text-red-700">{error}</p>}
       <ul className="mb-4 divide-y divide-gray-200">
         {menuItems.map((item) => (
-          <li key={item.id} className="flex items-center justify-between py-2 text-sm">
+          <li key={item.id} className="flex flex-col gap-1 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
             <span>
               {item.name} <span className="text-gray-500">({item.category})</span> —{" "}
               {formatCurrency(item.defaultPrice)}
@@ -629,13 +630,13 @@ export default function MenuItemsSection() {
         ))}
         {menuItems.length === 0 && <li className="py-2 text-sm text-gray-500">No menu items yet.</li>}
       </ul>
-      <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-2">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
         <label className="flex flex-col text-sm">
           Name
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="mt-1 rounded border border-gray-300 p-2"
+            className="mt-1 w-full rounded border border-gray-300 p-2 sm:w-auto"
           />
         </label>
         <label className="flex flex-col text-sm">
@@ -643,7 +644,7 @@ export default function MenuItemsSection() {
           <input
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="mt-1 rounded border border-gray-300 p-2"
+            className="mt-1 w-full rounded border border-gray-300 p-2 sm:w-auto"
           />
         </label>
         <label className="flex flex-col text-sm">
@@ -653,7 +654,7 @@ export default function MenuItemsSection() {
             step="0.01"
             value={defaultPrice}
             onChange={(e) => setDefaultPrice(e.target.value)}
-            className="mt-1 w-28 rounded border border-gray-300 p-2"
+            className="mt-1 w-full rounded border border-gray-300 p-2 sm:w-28"
           />
         </label>
         <button type="submit" className="rounded bg-orange-600 px-4 py-2 text-white">
@@ -965,13 +966,13 @@ export default function SaleForm() {
       </label>
 
       {lines.map((line, index) => (
-        <div key={index} className="flex flex-wrap items-end gap-2">
+        <div key={index} className="flex flex-col gap-2 border-b border-gray-100 pb-2 sm:flex-row sm:flex-wrap sm:items-end sm:border-b-0 sm:pb-0">
           <label className="flex flex-col text-sm">
             Item
             <select
               value={line.menuItemId}
               onChange={(e) => selectMenuItem(index, e.target.value)}
-              className="mt-1 rounded border border-gray-300 p-2"
+              className="mt-1 w-full rounded border border-gray-300 p-2 sm:w-auto"
             >
               <option value="">Select item</option>
               {menuItems.map((m) => (
@@ -987,7 +988,7 @@ export default function SaleForm() {
               type="number"
               value={line.qty}
               onChange={(e) => updateLine(index, { qty: e.target.value })}
-              className="mt-1 w-20 rounded border border-gray-300 p-2"
+              className="mt-1 w-full rounded border border-gray-300 p-2 sm:w-20"
             />
           </label>
           <label className="flex flex-col text-sm">
@@ -997,11 +998,11 @@ export default function SaleForm() {
               step="0.01"
               value={line.price}
               onChange={(e) => updateLine(index, { price: e.target.value })}
-              className="mt-1 w-28 rounded border border-gray-300 p-2"
+              className="mt-1 w-full rounded border border-gray-300 p-2 sm:w-28"
             />
           </label>
           {lines.length > 1 && (
-            <button type="button" onClick={() => removeLine(index)} className="text-red-700 underline">
+            <button type="button" onClick={() => removeLine(index)} className="self-start text-red-700 underline">
               Remove
             </button>
           )}
@@ -1024,7 +1025,7 @@ export default function SaleForm() {
               setCommissionTouched(true);
               setCommission(e.target.value);
             }}
-            className="mt-1 w-28 rounded border border-gray-300 p-2"
+            className="mt-1 w-full rounded border border-gray-300 p-2 sm:w-28"
           />
         </label>
       )}
@@ -1175,7 +1176,7 @@ export default function SalesList() {
       <ul className="mt-4 divide-y divide-gray-200">
         {filtered.map((sale) => (
           <li key={sale.id} className="py-2 text-sm">
-            <div className="flex justify-between">
+            <div className="flex flex-col gap-1 sm:flex-row sm:justify-between">
               <span>
                 {new Date(sale.date).toLocaleDateString()} · {sale.channel === "zomato" ? "Zomato" : "Direct"}
               </span>
@@ -1235,8 +1236,101 @@ git commit -m "Add sales list with date filtering and compose the Sales page"
 
 ---
 
+### Task 7: Mobile Nav Layout Fix
+
+**Files:**
+- Modify: `src/components/Nav.tsx`
+- Test: `src/components/Nav.test.tsx`
+
+**Interfaces:**
+- No signature changes — `Nav` still takes no props and renders the same 7 links. Only the wrapping `<nav>` element's CSS classes change.
+
+**Context:** Verified directly against the deployed app at a 375px viewport width: the current `<nav className="flex gap-4 overflow-x-auto ...">` requires horizontal scrolling to reach later tabs, with no visual indication that more tabs exist off-screen — "Settings" and part of "Insights" are cut off. Switching to `flex-wrap` lets the 7 links wrap onto a second line instead, which is legible without any scroll interaction.
+
+- [ ] **Step 1: Write the failing test**
+
+```tsx
+// src/components/Nav.test.tsx
+import { describe, it, expect } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import Nav from "./Nav";
+
+describe("Nav", () => {
+  it("wraps onto multiple lines instead of scrolling horizontally", () => {
+    render(
+      <MemoryRouter>
+        <Nav />
+      </MemoryRouter>
+    );
+    const nav = screen.getByRole("navigation");
+    expect(nav.className).toContain("flex-wrap");
+    expect(nav.className).not.toContain("overflow-x-auto");
+  });
+
+  it("still renders all 7 nav links", () => {
+    render(
+      <MemoryRouter>
+        <Nav />
+      </MemoryRouter>
+    );
+    for (const label of ["Dashboard", "Sales", "Inventory", "Expenses", "P&L", "Insights", "Settings"]) {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
+  });
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npm test -- src/components/Nav.test.tsx`
+Expected: FAIL — `nav.className` still contains `overflow-x-auto` and not `flex-wrap`.
+
+- [ ] **Step 3: Modify `src/components/Nav.tsx`**
+
+Change the `<nav>` element's `className` from:
+
+```tsx
+    <nav className="flex gap-4 overflow-x-auto border-b border-orange-200 bg-orange-50 px-4 py-2">
+```
+
+to:
+
+```tsx
+    <nav className="flex flex-wrap gap-x-4 gap-y-2 border-b border-orange-200 bg-orange-50 px-4 py-2">
+```
+
+The rest of the file (the `links` array and the `NavLink` mapping) is unchanged.
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npm test -- src/components/Nav.test.tsx`
+Expected: PASS — 2 tests passed.
+
+- [ ] **Step 5: Manually verify at mobile width**
+
+This is a layout change best confirmed visually, not just by class assertions. Run `npm run dev`, open the app in a browser, and use devtools' device toolbar (or resize the window) to ~375px wide. Confirm the 7 nav links wrap onto one or two lines with no horizontal scrollbar on the nav bar, and that every link is fully visible and tappable.
+
+- [ ] **Step 6: Run the full test suite and verify the build**
+
+Run: `npm test`
+Expected: PASS — all test files from this plan plus the foundation's, including the new `Nav.test.tsx`.
+
+Run: `npm run build`
+Expected: no errors.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/components/Nav.tsx src/components/Nav.test.tsx
+git commit -m "Make nav wrap instead of horizontally scrolling on narrow screens"
+```
+
+---
+
 ## Self-Review Notes
 
 - **Spec coverage:** this plan covers every item in the Sales & Menu Items spec's "In scope" list — menu item add/edit/delete (with referenced-item delete guard), the sale entry form (line items, price prefill/override, Zomato commission auto-calc/override, validation), the sales history list, date-range filtering, and currency formatting. CSV export and all other screens are explicitly deferred, matching the spec's "Out of scope" section.
 - **Placeholder scan:** no TBD/TODO markers; every step has complete, runnable code, verified against the actual current foundation code (`Settings.tsx`, `useDataStore.ts`, `types.ts` were read directly before writing this plan) and against real `Intl`/date-math output (verified via `node -e` before writing the exact test expectations) and `crypto.randomUUID()` availability (verified via a throwaway Vitest run in this project).
 - **Type consistency:** `AppData`, `MenuItem`, `Sale`, `SaleChannel`, `SaleLineItem`, `DateRange` are imported with identical names/shapes across every task that uses them. `mutate`'s signature (`(mutator: (data: AppData) => AppData, message: string) => Promise<void>`) matches the foundation's actual implementation in every call site in this plan.
+- **Mobile-first layout:** added after reviewing the deployed app at 375px width, which showed the nav bar cutting off tabs. Every new form row (Tasks 3–6) stacks vertically below the `sm:` breakpoint and every input is full-width by default; Task 7 fixes the existing `Nav` component's horizontal-scroll-with-no-affordance problem by switching it to wrap.
